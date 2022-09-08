@@ -7,7 +7,7 @@ from picamera import PiCamera
 
 
 # test image
-IMG_PATH = ("/home/voroscope/Desktop/hela-cells.jpg")
+IMG_PATH = "/home/voroscope/Desktop/hela-cells.jpg"
 
 stream = BytesIO()
 camera = PiCamera()
@@ -17,6 +17,7 @@ async def configure_camera(resolution: tuple = (640, 480)):
     camera.resolution = resolution
     # start a preview and let the camera warm up for 2 seconds
     camera.start_preview()
+    # wait for the camera to settle before proceeding
     await asyncio.sleep(2)
 
 
