@@ -24,16 +24,16 @@ Server code is based on the picamera module for controlling the Raspberry Pi cam
 git clone git@github.com:lukasvasadi/voroscope-server.git
 ```
 
-2. Navigate inside the project directory and install the dependencies:
+2. Install the dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install websockets picamera
 ```
 
 3. Run the server script:
 
 ```bash
-python server.py
+python piserver.py
 ```
 
 ## Helpful Links
