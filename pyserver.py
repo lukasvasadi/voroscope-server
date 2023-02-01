@@ -67,6 +67,10 @@ async def handle_exchange(socket: WebSocketServerProtocol):
                     asyncio.create_task(get_position(socket))
                 case InstructKey.GCODE.value:
                     await board.send(instruction[key])
+                case _:
+                    await socket.send(
+                        json.dumps({"err": f"Unrecognized instruction: {key}"})
+                    )
 
 
 async def main():
