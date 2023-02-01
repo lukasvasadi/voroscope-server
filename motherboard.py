@@ -7,8 +7,8 @@ from serial.tools import list_ports as ports
 class Motherboard(Serial):
     """Serial connection to BTT SKR Mini E3"""
 
-    def __init__(self, port: str, baudrate: int = 115200, timeout: float = 1.0):
-        super().__init__(port=port, baudrate=baudrate, timeout=timeout)
+    def __init__(self, description: str, baudrate: int = 115200, timeout: float = 1.0):
+        super().__init__(port=self.get_port(description), baudrate=baudrate, timeout=timeout)
 
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
@@ -49,7 +49,7 @@ class Motherboard(Serial):
         self.reset_buffers()  # Flush
         self.write(data.encode())  # Pass as bytearray
 
-    async def receive(self) -> str:
+    async def recv(self) -> str:
         """Read incoming data and decode"""
 
         return self.readline().decode("utf-8", "ignore").strip()
