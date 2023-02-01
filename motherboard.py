@@ -1,6 +1,7 @@
 import serial
+
 from serial import Serial
-from serial.tools import list_ports
+from serial.tools import list_ports as ports
 
 
 class Motherboard(Serial):
@@ -16,19 +17,19 @@ class Motherboard(Serial):
         self.dsrdtr = False
 
     @staticmethod
-    def get_port_descriptions() -> list:
+    def get_descriptions() -> list:
         """Return list of connected serial port descriptions"""
 
-        return [comport.description for comport in list(list_ports.comports())]
+        return [comport.description for comport in list(ports.comports())]
 
     @staticmethod
     def get_port(description) -> str:
-        """Use text description to automatically locate serial port"""
+        """Use string description to locate serial port"""
 
         try:
             return [
                 comport.device
-                for comport in list(list_ports.comports())
+                for comport in list(ports.comports())
                 if description in comport.description
             ][0]
         except IndexError:
@@ -40,21 +41,15 @@ class Motherboard(Serial):
         self.reset_input_buffer()
         self.reset_output_buffer()
 
-    def send(self, data: str) -> None:
+    async def send(self, data: str) -> None:
         """Send bytearray to device"""
 
-        data = data + "\r"
+        data += "\r"
 
         self.reset_buffers()  # Flush
         self.write(data.encode())  # Pass as bytearray
 
-    def receive(self) -> str:
+    async def receive(self) -> str:
         """Read incoming data and decode"""
 
         return self.readline().decode("utf-8", "ignore").strip()
-
-    def close_port(self) -> None:
-        """Safely close serial port"""
-
-        if self.is_open:
-            self.close()
