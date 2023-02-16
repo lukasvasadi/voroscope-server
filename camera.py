@@ -12,6 +12,7 @@ class Camera(PiCamera):
     def __init__(self, resolution: tuple = (640, 480)):
         super().__init__(resolution=resolution)
 
+        self.is_open = True
         self.image_stream = BytesIO()
 
     async def startup(self, delay: float = 2.0) -> None:
