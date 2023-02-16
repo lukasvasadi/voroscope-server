@@ -6,7 +6,7 @@ from io import BytesIO
 from picamera import PiCamera
 from serial import SerialException
 from instructkey import InstructKey
-from motherboard import Motherboard
+from stage import Stage
 from websockets.server import WebSocketServerProtocol
 from websockets.exceptions import ConnectionClosed
 
@@ -16,7 +16,7 @@ PORT: int = 8765
 
 stream = BytesIO()
 camera = PiCamera()
-board = Motherboard(description="MARLIN", baudrate=115200, timeout=1.0)
+stage = Stage(description="MARLIN", baudrate=115200, timeout=1.0)
 
 
 async def cfg_camera(resolution: tuple = (640, 480), delay: float = 2.0):
@@ -42,8 +42,8 @@ async def get_frames(socket: WebSocketServerProtocol, delay: float = 0.1):
 async def get_position(socket: WebSocketServerProtocol, delay: float = 1.0):
     while True:
         try:
-            await board.send("M114")
-            response = await board.recv()
+            await stage.send("M114")
+            response = await stage.recv()
             await socket.send(json.dumps({"pos": response}))
             await asyncio.sleep(delay)
         except ConnectionClosed:
@@ -66,7 +66,7 @@ async def handle_exchange(socket: WebSocketServerProtocol):
                     asyncio.create_task(get_frames(socket))
                     asyncio.create_task(get_position(socket))
                 case InstructKey.GCODE.value:
-                    await board.send(instruction[key])
+                    await stage.send(instruction[key])
                 case _:
                     await socket.send(
                         json.dumps({"err": f"Unrecognized instruction: {key}"})

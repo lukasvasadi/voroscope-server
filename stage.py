@@ -4,11 +4,11 @@ from serial import Serial
 from serial.tools import list_ports as ports
 
 
-class Motherboard(Serial):
+class Stage(Serial):
     """Serial connection to BTT SKR Mini E3"""
 
     def __init__(self, description: str, baudrate: int = 115200, timeout: float = 1.0):
-        super().__init__(port=self.get_port(description), baudrate=baudrate, timeout=timeout)
+        super().__init__(port=self.__get_port(description), baudrate=baudrate, timeout=timeout)
 
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
@@ -17,13 +17,13 @@ class Motherboard(Serial):
         self.dsrdtr = False
 
     @staticmethod
-    def get_descriptions() -> list:
+    def __get_descriptions() -> list:
         """Return list of connected serial port descriptions"""
 
         return [comport.description for comport in list(ports.comports())]
 
     @staticmethod
-    def get_port(description) -> str:
+    def __get_port(description) -> str:
         """Use string description to locate serial port"""
 
         try:
