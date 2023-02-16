@@ -78,3 +78,6 @@ if __name__ == "__main__":
 
     camera_proc.join()
     stage_proc.join()
+
+    camera.close()
+    stage.close()
