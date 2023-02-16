@@ -32,8 +32,8 @@ async def handle_camera(socket: WebSocketServerProtocol):
         for key in instruction.keys():
             match key:
                 case Key.RESOLUTION.value:
-                    print(tuple(instruction[key]))
                     camera.resolution = tuple(instruction[key])
+                    print(camera.resolution)
                     await camera.startup()
 
                     # NOTE: Tasks can be cancelled manually!
