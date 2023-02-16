@@ -8,7 +8,9 @@ class Stage(Serial):
     """Serial connection to BTT SKR Mini E3"""
 
     def __init__(self, description: str, baudrate: int = 115200, timeout: float = 1.0):
-        super().__init__(port=self.__get_port(description), baudrate=baudrate, timeout=timeout)
+        super().__init__(
+            port=self.__get_port(description), baudrate=baudrate, timeout=timeout
+        )
 
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
@@ -20,7 +22,7 @@ class Stage(Serial):
     def __get_descriptions() -> list:
         """Return list of connected serial port descriptions"""
 
-        return [comport.description for comport in list(ports.comports())]
+        return [comport.description for comport in ports.comports()]
 
     @staticmethod
     def __get_port(description) -> str:
@@ -29,7 +31,7 @@ class Stage(Serial):
         try:
             return [
                 comport.device
-                for comport in list(ports.comports())
+                for comport in ports.comports()
                 if description in comport.description
             ][0]
         except IndexError:
