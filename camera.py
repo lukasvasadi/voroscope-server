@@ -18,6 +18,7 @@ class Camera(PiCamera):
         """Allow time to warm up"""
 
         self.start_preview()
+        print(self.resolution)
         await asyncio.sleep(delay)
         print("Connected")
 

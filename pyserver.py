@@ -33,8 +33,8 @@ async def handle_camera(socket: WebSocketServerProtocol):
             match key:
                 case Key.RESOLUTION.value:
                     camera.resolution = tuple(instruction[key])
-                    print(camera.resolution)
                     await camera.startup()
+                    print(camera.resolution)
 
                     # NOTE: Tasks can be cancelled manually!
                     asyncio.create_task(camera.get_frames(socket))
