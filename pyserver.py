@@ -30,9 +30,9 @@ async def handle_camera(socket: WebSocketServerProtocol):
     async for message in socket:
         instruction: dict = json.loads(message)  # Convert message to dict
         for key in instruction.keys():
-            print(key)
             match key:
                 case Key.RESOLUTION.value:
+                    print(tuple(instruction[key]))
                     camera.resolution = tuple(instruction[key])
                     await camera.startup()
 
