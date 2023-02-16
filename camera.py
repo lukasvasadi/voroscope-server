@@ -40,4 +40,3 @@ class Camera(PiCamera):
             except ConnectionClosed:
                 self.close()
                 print("Connection closed...")
-                return

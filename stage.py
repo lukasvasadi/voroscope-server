@@ -70,7 +70,7 @@ class Stage(Serial):
                 await socket.send(json.dumps({"pos": response}))
                 await asyncio.sleep(delay)
             except ConnectionClosed:
-                return
+                break
             except SerialException:
                 await socket.send(json.dumps({"err": "Motherboard connection severed"}))
-                return
+                break
