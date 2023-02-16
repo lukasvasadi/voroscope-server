@@ -9,17 +9,17 @@ from websockets.exceptions import ConnectionClosed
 class Camera(PiCamera):
     """Connection to Raspberry Pi High Quality camera module"""
 
-    def __init__(self, resolution: tuple = (640, 480), startup_delay: float = 2.0):
+    def __init__(self, resolution: tuple = (640, 480)):
         super().__init__(resolution=resolution)
 
-        self.startup_delay = startup_delay
         self.image_stream = BytesIO()
 
-    async def startup(self) -> None:
+    async def startup(self, delay: float = 2.0) -> None:
         """Allow time to warm up"""
 
         self.start_preview()
-        await asyncio.sleep(self.startup_delay)
+        await asyncio.sleep(delay)
+        print("Connected")
 
     async def get_frames(
         self, socket: WebSocketServerProtocol, delay: float = 0.05
@@ -37,5 +37,6 @@ class Camera(PiCamera):
                 self.image_stream.truncate()
                 await asyncio.sleep(delay)
             except ConnectionClosed:
+                self.close()
                 print("Connection closed...")
                 return
