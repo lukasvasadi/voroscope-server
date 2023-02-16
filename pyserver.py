@@ -25,12 +25,13 @@ STAGE_PORT = args.Stage if args.Stage else 8775
 
 async def handle_camera(socket: WebSocketServerProtocol):
     global camera
+    camera = Camera()
     async for message in socket:
         instruction: dict = json.loads(message)  # Convert message to dict
         for key in instruction.keys():
             match key:
                 case Key.RESOLUTION.value:
-                    camera = Camera(resolution=tuple(instruction[key]))
+                    camera.resolution = tuple(instruction[key])
                     await camera.startup()
 
                     # NOTE: Tasks can be cancelled manually!
