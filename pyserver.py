@@ -22,19 +22,16 @@ ADDRESS = args.Address if args.Address else "10.0.151.85"
 CAMERA_PORT = args.Camera if args.Camera else 8765
 STAGE_PORT = args.Stage if args.Stage else 8775
 
-camera = Camera()
-stage = Stage(description="MARLIN", baudrate=115200, timeout=1.0)
-
 
 async def handle_camera(socket: WebSocketServerProtocol):
+    global camera
     async for message in socket:
         instruction: dict = json.loads(message)  # Convert message to dict
         for key in instruction.keys():
             match key:
                 case Key.RESOLUTION.value:
-                    camera.resolution = tuple(instruction[key])
+                    camera = Camera(resolution=tuple(instruction[key]))
                     await camera.startup()
-                    print(camera.resolution)
 
                     # NOTE: Tasks can be cancelled manually!
                     asyncio.create_task(camera.get_frames(socket))
@@ -45,6 +42,8 @@ async def handle_camera(socket: WebSocketServerProtocol):
 
 
 async def handle_stage(socket: WebSocketServerProtocol):
+    global stage
+    stage = Stage(description="MARLIN", baudrate=115200, timeout=1.0)
     async for message in socket:
         instruction: dict = json.loads(message)  # Convert message to dict
         for key in instruction.keys():
@@ -79,6 +78,3 @@ if __name__ == "__main__":
 
     camera_proc.join()
     stage_proc.join()
-
-    camera.close()
-    stage.close()
