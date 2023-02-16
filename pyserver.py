@@ -26,7 +26,7 @@ async def cfg_camera(resolution: tuple = (640, 480), delay: float = 2.0):
     await asyncio.sleep(delay)
 
 
-async def get_frames(socket: WebSocketServerProtocol, delay: float = 0.1):
+async def get_frames(socket: WebSocketServerProtocol, delay: float = 0.05):
     # Capture with video port
     for _ in camera.capture_continuous(stream, "jpeg", use_video_port=True):
         try:
