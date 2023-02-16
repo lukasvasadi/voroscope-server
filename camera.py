@@ -18,9 +18,7 @@ class Camera(PiCamera):
         """Allow time to warm up"""
 
         self.start_preview()
-        print(self.resolution)
         await asyncio.sleep(delay)
-        print("Connected")
 
     async def get_frames(
         self, socket: WebSocketServerProtocol, delay: float = 0.05
