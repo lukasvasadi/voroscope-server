@@ -1,7 +1,11 @@
+import json
 import serial
+import asyncio
 
-from serial import Serial
+from serial import Serial, SerialException
 from serial.tools import list_ports as ports
+from websockets.server import WebSocketServerProtocol
+from websockets.exceptions import ConnectionClosed
 
 
 class Stage(Serial):
@@ -55,3 +59,18 @@ class Stage(Serial):
         """Read incoming data and decode"""
 
         return self.readline().decode("utf-8", "ignore").strip()
+
+    async def get_position(
+        self, socket: WebSocketServerProtocol, delay: float = 1.0
+    ) -> None:
+        while True:
+            try:
+                await self.send("M114")
+                response = await self.recv()
+                await socket.send(json.dumps({"pos": response}))
+                await asyncio.sleep(delay)
+            except ConnectionClosed:
+                return
+            except SerialException:
+                await socket.send(json.dumps({"err": "Motherboard connection severed"}))
+                return

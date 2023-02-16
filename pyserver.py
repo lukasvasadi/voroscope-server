@@ -2,69 +2,56 @@ import json
 import asyncio
 import websockets
 
-from io import BytesIO
-from picamera import PiCamera
-from serial import SerialException
-from instructkey import InstructKey
 from stage import Stage
+from camera import Camera
+from instructkey import InstructKey
+from typing import Callable
+from multiprocessing import Process
+from argparse import ArgumentParser
+from serial import SerialException
 from websockets.server import WebSocketServerProtocol
 from websockets.exceptions import ConnectionClosed
 
 
-ADDRESS: str = "10.0.151.85"
-PORT: int = 8765
+parser = ArgumentParser()
+parser.add_argument("-a", "--Address", help="Server address")
+parser.add_argument("-c", "--Camera", help="Camera port")
+parser.add_argument("-s", "--Stage", help="Stage port")
 
-stream = BytesIO()
-camera = PiCamera()
-stage = Stage(description="MARLIN", baudrate=115200, timeout=1.0)
+args = parser.parse_args()
 
-
-async def cfg_camera(resolution: tuple = (640, 480), delay: float = 2.0):
-    camera.resolution = resolution
-    # Start camera preview and allow time for warm up
-    camera.start_preview()
-    await asyncio.sleep(delay)
+ADDRESS = args.Address if args.Address else "10.0.151.85"
+CAMERA_PORT = args.Camera if args.Camera else 8765
+STAGE_PORT = args.Stage if args.Stage else 8775
 
 
-async def get_frames(socket: WebSocketServerProtocol, delay: float = 0.05):
-    # Capture with video port
-    for _ in camera.capture_continuous(stream, "jpeg", use_video_port=True):
-        try:
-            await socket.send(stream.getvalue())  # send method is a coroutine
-            stream.seek(0)
-            stream.truncate()
-            await asyncio.sleep(delay)
-        except ConnectionClosed:
-            print("Connection closed...")
-            break
-
-
-async def get_position(socket: WebSocketServerProtocol, delay: float = 1.0):
-    while True:
-        try:
-            await stage.send("M114")
-            response = await stage.recv()
-            await socket.send(json.dumps({"pos": response}))
-            await asyncio.sleep(delay)
-        except ConnectionClosed:
-            break
-        except SerialException:
-            await socket.send(json.dumps({"err": "Motherboard connection severed"}))
-            break
-
-
-async def handle_exchange(socket: WebSocketServerProtocol):
+async def handle_camera(socket: WebSocketServerProtocol):
+    global camera
     async for message in socket:
         instruction: dict = json.loads(message)  # Convert message to dict
         for key in instruction.keys():
             match key:
                 case InstructKey.RESOLUTION.value:
-                    await cfg_camera(
-                        tuple(instruction[key])
-                    )  # Wait for camera setup before acquiring image stream
+                    camera = Camera(resolution=tuple(instruction[key]))
+                    await camera.startup()
+
                     # NOTE: Tasks can be cancelled manually!
-                    asyncio.create_task(get_frames(socket))
-                    asyncio.create_task(get_position(socket))
+                    asyncio.create_task(camera.get_frames(socket))
+                case _:
+                    await socket.send(
+                        json.dumps({"err": f"Unrecognized instruction: {key}"})
+                    )
+
+
+async def handle_stage(socket: WebSocketServerProtocol):
+    global stage
+    stage = Stage(description="MARLIN", baudrate=115200, timeout=1.0)
+    async for message in socket:
+        instruction: dict = json.loads(message)  # Convert message to dict
+        for key in instruction.keys():
+            match key:
+                case InstructKey.POSITION.value:
+                    asyncio.create_task(stage.get_position(socket))
                 case InstructKey.GCODE.value:
                     await stage.send(instruction[key])
                 case _:
@@ -73,9 +60,23 @@ async def handle_exchange(socket: WebSocketServerProtocol):
                     )
 
 
-async def main():
-    async with websockets.serve(handle_exchange, ADDRESS, PORT):
-        await asyncio.Future()  # Run forever
+def cfg_websocket(handle: Callable, address: str, port: int):
+    async def main():
+        async with websockets.serve(handle, address, port):
+            await asyncio.Future()  # Run forever
+
+    asyncio.run(main())
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    camera_proc = Process(
+        target=cfg_websocket, args=(handle_camera, ADDRESS, CAMERA_PORT)
+    )
+
+    stage_proc = Process(target=cfg_websocket, args=(handle_stage, ADDRESS, STAGE_PORT))
+
+    camera_proc.start()
+    stage_proc.start()
+
+    camera_proc.join()
+    stage_proc.join()
