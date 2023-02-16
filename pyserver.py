@@ -4,13 +4,11 @@ import websockets
 
 from stage import Stage
 from camera import Camera
-from instructkey import InstructKey
+from instructions import Key
 from typing import Callable
 from multiprocessing import Process
 from argparse import ArgumentParser
-from serial import SerialException
 from websockets.server import WebSocketServerProtocol
-from websockets.exceptions import ConnectionClosed
 
 
 parser = ArgumentParser()
@@ -31,7 +29,7 @@ async def handle_camera(socket: WebSocketServerProtocol):
         instruction: dict = json.loads(message)  # Convert message to dict
         for key in instruction.keys():
             match key:
-                case InstructKey.RESOLUTION.value:
+                case Key.RESOLUTION.value:
                     camera = Camera(resolution=tuple(instruction[key]))
                     await camera.startup()
 
@@ -50,9 +48,9 @@ async def handle_stage(socket: WebSocketServerProtocol):
         instruction: dict = json.loads(message)  # Convert message to dict
         for key in instruction.keys():
             match key:
-                case InstructKey.POSITION.value:
+                case Key.POSITION.value:
                     asyncio.create_task(stage.get_position(socket))
-                case InstructKey.GCODE.value:
+                case Key.GCODE.value:
                     await stage.send(instruction[key])
                 case _:
                     await socket.send(

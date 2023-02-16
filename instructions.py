@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class InstructKey(Enum):
+class Key(Enum):
     GCODE = "gcode"
     POSITION = "position"
     RESOLUTION = "resolution"
