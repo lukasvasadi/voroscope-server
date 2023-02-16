@@ -23,19 +23,14 @@ CAMERA_PORT = args.Camera if args.Camera else 8765
 STAGE_PORT = args.Stage if args.Stage else 8775
 
 
-async def handle_camera(socket: WebSocketServerProtocol):
-    global camera
+async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
     camera = Camera()
     async for message in socket:
         instruction: dict = json.loads(message)  # Convert message to dict
         for key in instruction.keys():
             match key:
                 case Key.RESOLUTION.value:
-                    try:
-                        # camera = Camera(resolution=tuple(instruction[key]))
-                        camera.resolution = tuple(instruction[key])
-                    except:
-                        camera.resolution = tuple(instruction[key])
+                    camera.resolution = tuple(instruction[key])
                     await camera.startup()
 
                     # NOTE: Tasks can be cancelled manually!
@@ -48,10 +43,10 @@ async def handle_camera(socket: WebSocketServerProtocol):
                     await socket.send(
                         json.dumps({"err": f"Unrecognized instruction: {key}"})
                     )
+    camera.close()
 
 
-async def handle_stage(socket: WebSocketServerProtocol):
-    global stage
+async def handle_stage(socket: WebSocketServerProtocol, stage: Stage):
     stage = Stage(description="MARLIN", baudrate=115200, timeout=1.0)
     async for message in socket:
         instruction: dict = json.loads(message)  # Convert message to dict
@@ -65,6 +60,7 @@ async def handle_stage(socket: WebSocketServerProtocol):
                     await socket.send(
                         json.dumps({"err": f"Unrecognized instruction: {key}"})
                     )
+    stage.close()
 
 
 def cfg_websocket(handle: Callable, address: str, port: int):
@@ -87,6 +83,3 @@ if __name__ == "__main__":
 
     camera_proc.join()
     stage_proc.join()
-
-    camera.close()
-    stage.close()
