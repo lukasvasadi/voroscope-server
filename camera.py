@@ -35,6 +35,8 @@ class Camera(PiCamera):
                 self.image_stream.seek(0)
                 self.image_stream.truncate()
                 await asyncio.sleep(delay)
+            except KeyError:
+                pass
             except ConnectionClosed:
                 self.close()
                 print("Connection closed...")
