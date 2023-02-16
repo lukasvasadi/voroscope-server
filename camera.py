@@ -2,6 +2,7 @@ import asyncio
 
 from io import BytesIO
 from picamera import PiCamera
+from contextlib import suppress
 from websockets.server import WebSocketServerProtocol
 from websockets.exceptions import ConnectionClosed
 
@@ -25,19 +26,19 @@ class Camera(PiCamera):
     ) -> None:
         """Continuous capture with video port"""
 
-        for _ in self.capture_continuous(
-            self.image_stream, "jpeg", use_video_port=True
-        ):
-            try:
-                await socket.send(
-                    self.image_stream.getvalue()
-                )  # send method is a coroutine
-                self.image_stream.seek(0)
-                self.image_stream.truncate()
-                await asyncio.sleep(delay)
-            except KeyError:
-                pass
-            except ConnectionClosed:
-                self.close()
-                print("Connection closed...")
-                return
+        # KeyError is sometimes unhandled during websocket closure
+        with suppress(KeyError):
+            for _ in self.capture_continuous(
+                self.image_stream, "jpeg", use_video_port=True
+            ):
+                try:
+                    await socket.send(
+                        self.image_stream.getvalue()
+                    )  # send method is a coroutine
+                    self.image_stream.seek(0)
+                    self.image_stream.truncate()
+                    await asyncio.sleep(delay)
+                except ConnectionClosed:
+                    self.close()
+                    print("Connection closed...")
+                    return
