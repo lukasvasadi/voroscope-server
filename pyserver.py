@@ -4,32 +4,39 @@ import websockets
 
 from stage import Stage
 from camera import Camera
-from instructions import Key
+from instructions import CameraKey, StageKey
+
 from typing import Callable
 from multiprocessing import Process
 from argparse import ArgumentParser
 from websockets.server import WebSocketServerProtocol
 
 
+# Setup optional command line arguments
 parser = ArgumentParser()
-parser.add_argument("-a", "--Address", help="Server address")
-parser.add_argument("-c", "--Camera", help="Camera port")
-parser.add_argument("-s", "--Stage", help="Stage port")
+parser.add_argument("-a", "--address", help="Server address")
+parser.add_argument("-c", "--cameraport", help="Camera port")
+parser.add_argument("-s", "--stageport", help="Stage port")
 
 args = parser.parse_args()
 
-ADDRESS = args.Address if args.Address else "10.0.151.85"
-CAMERA_PORT = args.Camera if args.Camera else 8765
-STAGE_PORT = args.Stage if args.Stage else 8775
+# Load default websocket configuration
+defaults = json.load(open("settings.json"))
+
+ADDRESS = args.address if args.address else defaults["address"]
+CAMERAPORT = args.camera if args.camera else defaults["cameraport"]
+STAGEPORT = args.stage if args.stage else defaults["stageport"]
 
 
 async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
     camera = Camera()
     async for message in socket:
-        instruction: dict = json.loads(message)  # Convert message to dict
+        instruction: dict = json.loads(
+            message
+        )  # Convert json serialized message to dict
         for key in instruction.keys():
             match key:
-                case Key.RESOLUTION.value:
+                case CameraKey.CFG.value:
                     camera.resolution = tuple(instruction[key])
                     await camera.startup()
 
@@ -38,7 +45,7 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
                     await task
 
                     if task.exception():
-                        print(f"Warning: Received {task.exception()} from camera")
+                        print(f"Warning: Camera raised {task.exception()}")
                 case _:
                     await socket.send(
                         json.dumps({"err": f"Unrecognized instruction: {key}"})
@@ -47,14 +54,16 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
 
 
 async def handle_stage(socket: WebSocketServerProtocol, stage: Stage):
-    stage = Stage(description="MARLIN", baudrate=115200, timeout=1.0)
+    stage = Stage()
     async for message in socket:
-        instruction: dict = json.loads(message)  # Convert message to dict
+        instruction: dict = json.loads(
+            message
+        )  # Convert json serialized message to dict
         for key in instruction.keys():
             match key:
-                case Key.POSITION.value:
+                case StageKey.POS.value:
                     asyncio.create_task(stage.get_position(socket))
-                case Key.GCODE.value:
+                case StageKey.CMD.value:
                     await stage.send(instruction[key])
                 case _:
                     await socket.send(
@@ -73,13 +82,15 @@ def cfg_websocket(handle: Callable, address: str, port: int):
 
 if __name__ == "__main__":
     camera_proc = Process(
-        target=cfg_websocket, args=(handle_camera, ADDRESS, CAMERA_PORT)
+        target=cfg_websocket, args=(handle_camera, ADDRESS, CAMERAPORT)
     )
 
-    stage_proc = Process(target=cfg_websocket, args=(handle_stage, ADDRESS, STAGE_PORT))
+    stage_proc = Process(target=cfg_websocket, args=(handle_stage, ADDRESS, STAGEPORT))
 
+    # Run isolated processes
     camera_proc.start()
     stage_proc.start()
 
+    # Join processes before exit
     camera_proc.join()
     stage_proc.join()

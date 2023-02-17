@@ -11,7 +11,9 @@ from websockets.exceptions import ConnectionClosed
 class Stage(Serial):
     """Serial connection to BTT SKR Mini E3"""
 
-    def __init__(self, description: str, baudrate: int = 115200, timeout: float = 1.0):
+    def __init__(
+        self, description: str = "MARLIN", baudrate: int = 115200, timeout: float = 1.0
+    ):
         super().__init__(
             port=self.__get_port(description), baudrate=baudrate, timeout=timeout
         )
@@ -63,6 +65,8 @@ class Stage(Serial):
     async def get_position(
         self, socket: WebSocketServerProtocol, delay: float = 1.0
     ) -> None:
+        """Transmit current stage position"""
+
         while True:
             try:
                 await self.send("M114")

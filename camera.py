@@ -12,7 +12,6 @@ class Camera(PiCamera):
     def __init__(self, resolution: tuple = (640, 480)):
         super().__init__(resolution=resolution)
 
-        self.is_open = True
         self.image_stream = BytesIO()
 
     async def startup(self, delay: float = 2.0) -> None:
@@ -22,9 +21,9 @@ class Camera(PiCamera):
         await asyncio.sleep(delay)
 
     async def get_frames(
-        self, socket: WebSocketServerProtocol, delay: float = 0.05
+        self, socket: WebSocketServerProtocol, delay: float = 0.01
     ) -> None:
-        """Continuous capture with video port"""
+        """Transmit frames from continuous capture with video port"""
 
         for _ in self.capture_continuous(
             self.image_stream, "jpeg", use_video_port=True
