@@ -1,7 +1,10 @@
 from enum import Enum
 
 
-class Key(Enum):
-    GCODE = "gcode"
-    POSITION = "position"
-    RESOLUTION = "resolution"
+class CameraKey(Enum):
+    CFG = "cfg"
+
+
+class StageKey(Enum):
+    CMD = "cmd"
+    POS = "pos"
