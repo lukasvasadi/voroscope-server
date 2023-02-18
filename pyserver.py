@@ -42,10 +42,10 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
 
                     # NOTE: Tasks can be cancelled manually!
                     task = asyncio.create_task(camera.get_frames(socket))
-                    await task
+                    # await task
 
-                    if task.exception():
-                        print(f"Warning: Camera raised {task.exception()}")
+                    # if task.exception():
+                    #     print(f"Warning: Camera raised {task.exception()}")
                 case _:
                     await socket.send(
                         json.dumps({"err": f"Unrecognized instruction: {key}"})
