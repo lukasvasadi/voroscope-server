@@ -24,8 +24,8 @@ args = parser.parse_args()
 defaults = json.load(open("settings.json"))
 
 ADDRESS = args.address if args.address else defaults["address"]
-CAMERAPORT = args.camera if args.camera else defaults["cameraport"]
-STAGEPORT = args.stage if args.stage else defaults["stageport"]
+CAMERAPORT = args.cameraport if args.cameraport else defaults["cameraport"]
+STAGEPORT = args.stageport if args.stageport else defaults["stageport"]
 
 
 async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
@@ -37,7 +37,7 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
         for key in instruction.keys():
             match key:
                 case CameraKey.CFG.value:
-                    camera.resolution = tuple(instruction[key])
+                    camera.resolution = tuple(instruction[key]["resolution"])
                     await camera.startup()
 
                     # NOTE: Tasks can be cancelled manually!
