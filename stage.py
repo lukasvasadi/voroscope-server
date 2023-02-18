@@ -71,7 +71,11 @@ class Stage(Serial):
             try:
                 await self.send("M114")
                 response = await self.recv()
-                await socket.send(json.dumps({"pos": response}))
+
+                if any([axis in response for axis in ("X", "Y", "Z")]):
+                    await socket.send(json.dumps({"pos": response}))
+                else:
+                    await socket.send(json.dumps({"err": response}))
                 await asyncio.sleep(delay)
             except ConnectionClosed:
                 return
