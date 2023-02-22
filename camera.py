@@ -25,16 +25,19 @@ class Camera(PiCamera):
     ) -> None:
         """Transmit frames from continuous capture with video port"""
 
-        for _ in self.capture_continuous(
-            self.image_stream, "jpeg", use_video_port=True
-        ):
-            try:
-                await socket.send(
-                    self.image_stream.getvalue()
-                )  # send method is a coroutine
-                self.image_stream.seek(0)
-                self.image_stream.truncate()
-                await asyncio.sleep(delay)
-            except ConnectionClosed:
-                print("Connection closed...")
-                return
+        try:
+            for _ in self.capture_continuous(
+                self.image_stream, "jpeg", use_video_port=True
+            ):
+                try:
+                    await socket.send(
+                        self.image_stream.getvalue()
+                    )  # send method is a coroutine
+                    self.image_stream.seek(0)
+                    self.image_stream.truncate()
+                    await asyncio.sleep(delay)
+                except ConnectionClosed:
+                    print("Connection closed...")
+                    return
+        except (KeyError, AttributeError):
+            print("Camera experienced an unexpected cancel request")
