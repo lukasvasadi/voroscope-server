@@ -39,4 +39,4 @@ class Camera(PiCamera):
                 except (ConnectionClosed, ConnectionClosedOK):
                     return
         except (KeyError, AttributeError):
-            print("Camera experienced an unexpected cancel request")
+            print("Camera connection was severed abruptly")

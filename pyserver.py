@@ -112,10 +112,13 @@ if __name__ == "__main__":
 
     stage_proc = Process(target=cfg_websocket, args=(handle_stage, ADDRESS, STAGEPORT))
 
-    # Run isolated processes
-    camera_proc.start()
-    stage_proc.start()
-
-    # Join processes before exit
-    camera_proc.join()
-    stage_proc.join()
+    try:
+        # Run isolated processes
+        camera_proc.start()
+        stage_proc.start()
+    except KeyboardInterrupt:
+        print("Processes terminated with KeyboardInterrupt")
+    finally:
+        # Join processes before exit
+        camera_proc.join()
+        stage_proc.join()
