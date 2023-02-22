@@ -55,6 +55,7 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
     except (ConnectionClosedError, ConnectionClosedOK):
         status = task.cancel()
         print(f"Camera coroutine cancellation request status: {status}")
+        await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
         print(f"Camera coroutine cancellation status: {task.cancelled()}")
 
         if task.exception():
@@ -86,6 +87,7 @@ async def handle_stage(socket: WebSocketServerProtocol, stage: Stage):
     except (ConnectionClosedError, ConnectionClosedOK):
         status = task.cancel()
         print(f"Stage coroutine cancellation request status: {status}")
+        await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
         print(f"Stage coroutine cancellation status: {task.cancelled()}")
 
         if task.exception():
