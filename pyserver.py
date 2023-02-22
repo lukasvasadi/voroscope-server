@@ -52,7 +52,7 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
                         await socket.send(
                             json.dumps({"err": f"Unrecognized instruction: {key}"})
                         )
-    except (ConnectionClosedError, ConnectionClosedOK):
+    except (ConnectionClosedError, ConnectionClosedOK, KeyboardInterrupt):
         status = task.cancel()
         print(f"Camera coroutine cancellation request status: {status}")
         await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
@@ -85,7 +85,7 @@ async def handle_stage(socket: WebSocketServerProtocol, stage: Stage):
                         await socket.send(
                             json.dumps({"err": f"Unrecognized instruction: {key}"})
                         )
-    except (ConnectionClosedError, ConnectionClosedOK):
+    except (ConnectionClosedError, ConnectionClosedOK, KeyboardInterrupt):
         status = task.cancel()
         print(f"Stage coroutine cancellation request status: {status}")
         await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
