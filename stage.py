@@ -85,6 +85,8 @@ class Stage(Serial):
 
                 if any([axis in response for axis in ("X", "Y", "Z")]):
                     await socket.send(json.dumps({"pos": response}))
+                elif response in ("ok", "echo:busy: processing"):
+                    continue
                 else:
                     await socket.send(json.dumps({"err": response}))
             except ConnectionClosed:
