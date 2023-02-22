@@ -123,4 +123,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         camera_proc.terminate()
         stage_proc.terminate()
-        print("Processes terminated with KeyboardInterrupt")
+        print("\nProcesses terminated with KeyboardInterrupt")
