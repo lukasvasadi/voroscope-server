@@ -94,5 +94,5 @@ class Stage(Serial):
                 await self.send("M154 S0")  # Disable auto-report
                 return
             except SerialException:
-                await socket.send(json.dumps({"err": "Motherboard connection severed"}))
-                return
+                # await socket.send(json.dumps({"err": "Motherboard connection severed"}))
+                pass
