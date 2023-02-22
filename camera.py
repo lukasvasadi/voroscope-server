@@ -39,4 +39,4 @@ class Camera(PiCamera):
                 except (ConnectionClosed, ConnectionClosedOK):
                     return
         except (KeyError, AttributeError):
-            pass
+            return
