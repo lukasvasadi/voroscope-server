@@ -94,5 +94,4 @@ class Stage(Serial):
                 await self.send("M154 S0")  # Disable auto-report
                 return
             except SerialException:
-                print("Camera connection was severed abruptly")
-                return
+                pass
