@@ -59,7 +59,7 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
         print(f"Camera coroutine cancellation status: {task.cancelled()}")
 
         if task.exception():
-            print(f"Warning: Camera raised {task.exception()}")
+            print(f"Warning: Camera coroutine raised {task.exception()}")
     finally:
         print("Connection closed...")
         camera.close()
@@ -92,7 +92,7 @@ async def handle_stage(socket: WebSocketServerProtocol, stage: Stage):
         print(f"Stage coroutine cancellation status: {task.cancelled()}")
 
         if task.exception():
-            print(f"Warning: Camera raised {task.exception()}")
+            print(f"Warning: Stage coroutine raised {task.exception()}")
     finally:
         stage.close()
 
@@ -112,13 +112,15 @@ if __name__ == "__main__":
 
     stage_proc = Process(target=cfg_websocket, args=(handle_stage, ADDRESS, STAGEPORT))
 
+    # Run isolated processes
+    camera_proc.start()
+    stage_proc.start()
+
     try:
-        # Run isolated processes
-        camera_proc.start()
-        stage_proc.start()
-    except KeyboardInterrupt:
-        print("Processes terminated with KeyboardInterrupt")
-    finally:
         # Join processes before exit
         camera_proc.join()
         stage_proc.join()
+    except KeyboardInterrupt:
+        camera_proc.terminate()
+        stage_proc.terminate()
+        print("Processes terminated with KeyboardInterrupt")
