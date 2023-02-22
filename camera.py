@@ -40,3 +40,4 @@ class Camera(PiCamera):
                     return
         except (KeyError, AttributeError):
             print("Camera connection was severed abruptly")
+            return

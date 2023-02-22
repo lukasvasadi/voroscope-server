@@ -95,4 +95,4 @@ class Stage(Serial):
                 return
             except SerialException:
                 print("Camera connection was severed abruptly")
-                pass
+                return
