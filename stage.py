@@ -6,7 +6,7 @@ from typing import Optional
 from serial import Serial, SerialException
 from serial.tools import list_ports as ports
 from websockets.server import WebSocketServerProtocol
-from websockets.exceptions import ConnectionClosed
+from websockets.exceptions import ConnectionClosed, ConnectionClosedOK
 
 
 class Stage(Serial):
@@ -90,7 +90,7 @@ class Stage(Serial):
                     continue
                 else:
                     await socket.send(json.dumps({"err": response}))
-            except ConnectionClosed:
+            except (ConnectionClosed, ConnectionClosedOK):
                 await self.send("M154 S0")  # Disable auto-report
                 return
             except SerialException:

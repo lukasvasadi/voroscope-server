@@ -61,6 +61,7 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
         if task.exception():
             print(f"Warning: Camera raised {task.exception()}")
     finally:
+        print("Connection closed...")
         camera.close()
 
 

@@ -3,7 +3,7 @@ import asyncio
 from io import BytesIO
 from picamera import PiCamera
 from websockets.server import WebSocketServerProtocol
-from websockets.exceptions import ConnectionClosed
+from websockets.exceptions import ConnectionClosed, ConnectionClosedOK
 
 
 class Camera(PiCamera):
@@ -36,8 +36,7 @@ class Camera(PiCamera):
                     self.image_stream.seek(0)
                     self.image_stream.truncate()
                     await asyncio.sleep(delay)
-                except ConnectionClosed:
-                    print("Connection closed...")
+                except (ConnectionClosed, ConnectionClosedOK):
                     return
         except (KeyError, AttributeError):
             print("Camera experienced an unexpected cancel request")
