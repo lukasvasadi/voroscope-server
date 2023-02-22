@@ -64,6 +64,7 @@ async def handle_stage(socket: WebSocketServerProtocol, stage: Stage):
                 case StageKey.POS.value:
                     asyncio.create_task(stage.get_position(socket, instruction[key]))
                 case StageKey.CMD.value:
+                    print(instruction[key])
                     await stage.send(instruction[key])
                 case _:
                     await socket.send(
