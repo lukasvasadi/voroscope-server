@@ -2,6 +2,7 @@ import json
 import serial
 import asyncio
 
+from typing import Optional
 from serial import Serial, SerialException
 from serial.tools import list_ports as ports
 from websockets.server import WebSocketServerProtocol
@@ -9,10 +10,16 @@ from websockets.exceptions import ConnectionClosed
 
 
 class Stage(Serial):
-    """Serial connection to BTT SKR Mini E3"""
+    """Serial connection to BTT SKR Mini E3
+
+    Default timeout to None, i.e., wait forever until requested bytes received
+    """
 
     def __init__(
-        self, description: str = "MARLIN", baudrate: int = 115200, timeout: float = 1.0
+        self,
+        description: str = "MARLIN",
+        baudrate: int = 115200,
+        timeout: Optional[float] = None,
     ):
         super().__init__(
             port=self.__get_port(description), baudrate=baudrate, timeout=timeout
@@ -63,21 +70,25 @@ class Stage(Serial):
         return self.readline().decode("utf-8", "ignore").strip()
 
     async def get_position(
-        self, socket: WebSocketServerProtocol, delay: float = 1.0
+        self, socket: WebSocketServerProtocol, interval: int = 1
     ) -> None:
-        """Transmit current stage position"""
+        """Transmit current stage position
+
+        https://marlinfw.org/docs/gcode/M154.html
+        """
+
+        await self.send(f"M154 S{interval}")  # Enable auto-report
 
         while True:
             try:
-                await self.send("M114")
-                response = await self.recv()
+                response = await self.recv()  # Wait until bytes received
 
                 if any([axis in response for axis in ("X", "Y", "Z")]):
                     await socket.send(json.dumps({"pos": response}))
                 else:
                     await socket.send(json.dumps({"err": response}))
-                await asyncio.sleep(delay)
             except ConnectionClosed:
+                await self.send("M154 S0")  # Disable auto-report
                 return
             except SerialException:
                 await socket.send(json.dumps({"err": "Motherboard connection severed"}))
