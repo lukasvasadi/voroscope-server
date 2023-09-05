@@ -7,22 +7,25 @@ import json
 import asyncio
 import websockets
 
+import websockets.server as server
+
+from asyncio import Task
+from typing import Optional
+from typing import Callable
+from argparse import ArgumentParser
+from multiprocessing import Process
+from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
+
 from stage import Stage
 from camera import Camera
 from instructions import CameraKey, StageKey
-
-from typing import Callable
-from multiprocessing import Process
-from argparse import ArgumentParser
-from websockets.server import WebSocketServerProtocol
-from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 
 # Setup optional command line arguments
 parser = ArgumentParser()
 parser.add_argument("-a", "--address", help="Server address")
-parser.add_argument("-c", "--cameraport", help="Camera port")
-parser.add_argument("-s", "--stageport", help="Stage port")
+parser.add_argument("-c", "--camera", help="Camera port")
+parser.add_argument("-s", "--stage", help="Stage port")
 
 args = parser.parse_args()
 
@@ -30,21 +33,29 @@ args = parser.parse_args()
 defaults = json.load(open("settings.json"))
 
 ADDRESS = args.address if args.address else defaults["address"]
-CAMERAPORT = args.cameraport if args.cameraport else defaults["cameraport"]
-STAGEPORT = args.stageport if args.stageport else defaults["stageport"]
+CAMERA_PORT = args.cameraport if args.cameraport else defaults["ports"]["camera"]
+STAGE_PORT = args.stageport if args.stageport else defaults["ports"]["stage"]
 
 
-async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
+async def process_task_cancellation(task: Task) -> None:
+    print(f"Camera coroutine cancellation request status: {task.cancel()}")
+    await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
+    print(f"Camera coroutine cancellation status: {task.cancelled()}")
+
+    if task.exception():
+        print(f"Warning: Camera coroutine raised {task.exception()}")
+
+
+async def handle_camera(socket: server.WebSocketServerProtocol, camera: Camera):
+    task: Optional[Task] = None
     try:
         camera = Camera()
         async for message in socket:
-            instruction: dict = json.loads(
-                message
-            )  # Convert json serialized message to dict
-            for key in instruction.keys():
+            data = json.loads(message)  # Convert json serialized message to dict
+            for key in data.keys():
                 match key:
                     case CameraKey.CFG.value:
-                        camera.resolution = tuple(instruction[key]["resolution"])
+                        camera.resolution = tuple(data[key]["resolution"])
                         await camera.startup()
 
                         task = asyncio.create_task(camera.get_frames(socket))
@@ -53,19 +64,15 @@ async def handle_camera(socket: WebSocketServerProtocol, camera: Camera):
                             json.dumps({"err": f"Unrecognized instruction: {key}"})
                         )
     except (ConnectionClosedError, ConnectionClosedOK, KeyboardInterrupt):
-        status = task.cancel()
-        print(f"Camera coroutine cancellation request status: {status}")
-        await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
-        print(f"Camera coroutine cancellation status: {task.cancelled()}")
-
-        if task.exception():
-            print(f"Warning: Camera coroutine raised {task.exception()}")
+        if task is not None:
+            await process_task_cancellation(task)
     finally:
-        print("Connection closed...")
+        print("Closing camera...")
         camera.close()
 
 
-async def handle_stage(socket: WebSocketServerProtocol, stage: Stage):
+async def handle_stage(socket: server.WebSocketServerProtocol, stage: Stage):
+    task: Optional[Task] = None
     try:
         stage = Stage()
         async for message in socket:
@@ -86,14 +93,10 @@ async def handle_stage(socket: WebSocketServerProtocol, stage: Stage):
                             json.dumps({"err": f"Unrecognized instruction: {key}"})
                         )
     except (ConnectionClosedError, ConnectionClosedOK, KeyboardInterrupt):
-        status = task.cancel()
-        print(f"Stage coroutine cancellation request status: {status}")
-        await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
-        print(f"Stage coroutine cancellation status: {task.cancelled()}")
-
-        if task.exception():
-            print(f"Warning: Stage coroutine raised {task.exception()}")
+        if task is not None:
+            await process_task_cancellation(task)
     finally:
+        print("Closing stage...")
         stage.close()
 
 
@@ -107,10 +110,10 @@ def cfg_websocket(handle: Callable, address: str, port: int):
 
 if __name__ == "__main__":
     camera_proc = Process(
-        target=cfg_websocket, args=(handle_camera, ADDRESS, CAMERAPORT)
+        target=cfg_websocket, args=(handle_camera, ADDRESS, CAMERA_PORT)
     )
 
-    stage_proc = Process(target=cfg_websocket, args=(handle_stage, ADDRESS, STAGEPORT))
+    stage_proc = Process(target=cfg_websocket, args=(handle_stage, ADDRESS, STAGE_PORT))
 
     # Run isolated processes
     camera_proc.start()
@@ -123,4 +126,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         camera_proc.terminate()
         stage_proc.terminate()
-        print("\nProcesses terminated with KeyboardInterrupt")
+        print("Processes terminated with KeyboardInterrupt")
