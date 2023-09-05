@@ -19,6 +19,8 @@ from typing import Optional, Callable
 from src.stage import Stage
 from src.camera import Camera
 
+from termcolor import colored
+
 
 class Instruction(Enum):
     CFG = 0
@@ -35,31 +37,52 @@ parser.add_argument("-s", "--stage", help="Stage port")
 args = parser.parse_args()
 
 # Load default websocket configuration
-defaults = json.load(open("../settings.json"))
+defaults = json.load(open("config/settings.json"))
 
 ADDRESS = args.address if args.address else defaults["address"]
-CAMERA_PORT = args.cameraport if args.cameraport else defaults["ports"]["camera"]
-STAGE_PORT = args.stageport if args.stageport else defaults["ports"]["stage"]
+CAMERA_PORT = args.camera if args.camera else defaults["ports"]["camera"]
+STAGE_PORT = args.stage if args.stage else defaults["ports"]["stage"]
 
 
 async def process_task_cancellation(task: Task) -> None:
-    print(f"Camera coroutine cancellation request status: {task.cancel()}")
+    print(
+        colored(
+            f"Camera coroutine cancellation request: {task.cancel()}",
+            "magenta",
+            attrs=["bold"],
+        )
+    )
     await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
-    print(f"Camera coroutine cancellation status: {task.cancelled()}")
+    print(
+        colored(
+            f"Camera coroutine cancellation status: {task.cancelled()}",
+            "magenta",
+            attrs=["bold"],
+        )
+    )
 
     if task.exception():
-        print(f"Warning: Camera coroutine raised {task.exception()}")
+        print(
+            colored(
+                f"Warning: Camera coroutine exception: {task.exception()}",
+                "red",
+                attrs=["bold"],
+            )
+        )
 
 
 async def handle_camera(socket: server.WebSocketServerProtocol, camera: Camera):
     task: Optional[Task] = None
+    data: dict
+    key: str
     try:
         camera = Camera(socket)
+        print(colored("Camera connected", "green", attrs=["bold"]))
         async for message in socket:
             data = json.loads(message)  # Convert json serialized message to dict
             for key in data.keys():
                 match key.upper():
-                    case Instruction.CFG:
+                    case Instruction.CFG.name:
                         camera.resolution = tuple(data[key]["resolution"])
                         await camera.startup()
                         task = asyncio.create_task(camera.get_frames())
@@ -75,25 +98,26 @@ async def handle_camera(socket: server.WebSocketServerProtocol, camera: Camera):
         if task is not None:
             await process_task_cancellation(task)
     finally:
-        print("Closing camera...")
+        print(colored("Closing camera...", "yellow", attrs=["bold"]))
         camera.close()
 
 
 async def handle_stage(socket: server.WebSocketServerProtocol, stage: Stage):
     task: Optional[Task] = None
+    data: dict
+    key: str
     try:
         stage = Stage(socket)
+        print(colored("Stage connected", "green", attrs=["bold"]))
         async for message in socket:
-            instruction = json.loads(message)  # Convert json serialized message to dict
-            for key in instruction.keys():
+            data = json.loads(message)  # Convert json serialized message to dict
+            for key in data.keys():
                 match key.upper():
-                    case Instruction.POS:
-                        task = asyncio.create_task(
-                            stage.get_position(int(instruction[key]))
-                        )
-                    case Instruction.CMD:
-                        print(instruction[key])
-                        await stage.send(instruction[key])
+                    case Instruction.POS.name:
+                        task = asyncio.create_task(stage.get_position(int(data[key])))
+                    case Instruction.CMD.name:
+                        print(data[key])
+                        await stage.send(data[key])
                     case _:
                         await socket.send(
                             json.dumps({"err": f"Unrecognized instruction: {key}"})
@@ -106,7 +130,7 @@ async def handle_stage(socket: server.WebSocketServerProtocol, stage: Stage):
         if task is not None:
             await process_task_cancellation(task)
     finally:
-        print("Closing stage...")
+        print(colored("Closing camera...", "yellow", attrs=["bold"]))
         stage.close()
 
 

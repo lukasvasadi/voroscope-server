@@ -27,20 +27,20 @@ class Camera(PiCamera):
         self.start_preview()
         await asyncio.sleep(delay)
 
-    async def get_frames(self, delay: float = 0.01) -> None:
+    async def get_frames(self) -> None:
         """Transmit frames from continuous capture with video port"""
 
         stream = BytesIO()
 
         try:
-            async for _ in self.capture_continuous(stream, "jpeg", use_video_port=True):
+            for _ in self.capture_continuous(stream, "jpeg", use_video_port=True):
                 try:
                     await self.socket.send(
                         stream.getvalue()
                     )  # send method is a coroutine
                     stream.seek(0)
                     stream.truncate()
-                    # await asyncio.sleep(delay)
+                    # await asyncio.sleep(0.01)
                 except (exceptions.ConnectionClosed, exceptions.ConnectionClosedOK):
                     return
         except (KeyError, AttributeError):
