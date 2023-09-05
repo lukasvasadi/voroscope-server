@@ -2,11 +2,12 @@ import json
 import serial
 import asyncio
 
+import websockets.server as server
+import websockets.exceptions as exceptions
+
 from typing import Optional
 from serial import Serial, SerialException
 from serial.tools import list_ports as ports
-from websockets.server import WebSocketServerProtocol
-from websockets.exceptions import ConnectionClosed, ConnectionClosedOK
 
 
 class Stage(Serial):
@@ -17,6 +18,7 @@ class Stage(Serial):
 
     def __init__(
         self,
+        socket: server.WebSocketServerProtocol,
         description: str = "MARLIN",
         baudrate: int = 115200,
         timeout: Optional[float] = None,
@@ -31,6 +33,8 @@ class Stage(Serial):
         self.rtscts = False
         self.dsrdtr = False
 
+        self.socket = socket
+
     @staticmethod
     def __get_descriptions() -> list:
         """Return list of connected serial port descriptions"""
@@ -38,7 +42,7 @@ class Stage(Serial):
         return [comport.description for comport in ports.comports()]
 
     @staticmethod
-    def __get_port(description) -> str:
+    def __get_port(description) -> Optional[str]:
         """Use string description to locate serial port"""
 
         try:
@@ -56,22 +60,20 @@ class Stage(Serial):
         self.reset_input_buffer()
         self.reset_output_buffer()
 
-    async def send(self, data: str) -> None:
+    async def send(self, data: str, encoding: str = "utf-8") -> None:
         """Send bytearray to device"""
 
         data += "\r"
 
-        self.reset_buffers()  # Flush
-        self.write(data.encode())  # Pass as bytearray
+        self.write(data.encode(encoding))  # Pass as bytearray
+        self.flush()
 
-    async def recv(self) -> str:
+    async def recv(self, encoding: str = "utf-8") -> str:
         """Read incoming data and decode"""
 
-        return self.readline().decode("utf-8", "ignore").strip()
+        return self.readline().decode(encoding, "ignore").strip()
 
-    async def get_position(
-        self, socket: WebSocketServerProtocol, interval: int = 1
-    ) -> None:
+    async def get_position(self, interval: int = 1) -> None:
         """Transmit current stage position
 
         https://marlinfw.org/docs/gcode/M154.html
@@ -84,13 +86,13 @@ class Stage(Serial):
                 response = await self.recv()  # Wait until bytes received
 
                 if any([axis in response for axis in ("X", "Y", "Z")]):
-                    await socket.send(json.dumps({"pos": response}))
-                    await asyncio.sleep(interval)
+                    await self.socket.send(json.dumps({"pos": response}))
+                    # await asyncio.sleep(interval)
                 elif response in ("ok", "echo:busy: processing"):
                     continue
                 else:
-                    await socket.send(json.dumps({"err": response}))
-            except (ConnectionClosed, ConnectionClosedOK):
+                    await self.socket.send(json.dumps({"err": response}))
+            except (exceptions.ConnectionClosed, exceptions.ConnectionClosedOK):
                 await self.send("M154 S0")  # Disable auto-report
                 return
             except SerialException:

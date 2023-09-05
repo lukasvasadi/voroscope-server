@@ -1,18 +1,25 @@
 import asyncio
 
+import websockets.server as server
+import websockets.exceptions as exceptions
+
 from io import BytesIO
-from picamera import PiCamera
-from websockets.server import WebSocketServerProtocol
-from websockets.exceptions import ConnectionClosed, ConnectionClosedOK
+
+try:
+    from picamera import PiCamera
+except ModuleNotFoundError:
+    raise RuntimeError("Camera object can only be instantiated for Raspberry Pi")
 
 
 class Camera(PiCamera):
     """Connection to Raspberry Pi High Quality camera module"""
 
-    def __init__(self, resolution: tuple = (640, 480)):
+    def __init__(
+        self, socket: server.WebSocketServerProtocol, resolution: tuple = (640, 480)
+    ):
         super().__init__(resolution=resolution)
 
-        self.image_stream = BytesIO()
+        self.socket = socket
 
     async def startup(self, delay: float = 2.0) -> None:
         """Allow time to warm up"""
@@ -20,23 +27,21 @@ class Camera(PiCamera):
         self.start_preview()
         await asyncio.sleep(delay)
 
-    async def get_frames(
-        self, socket: WebSocketServerProtocol, delay: float = 0.01
-    ) -> None:
+    async def get_frames(self, delay: float = 0.01) -> None:
         """Transmit frames from continuous capture with video port"""
 
+        stream = BytesIO()
+
         try:
-            for _ in self.capture_continuous(
-                self.image_stream, "jpeg", use_video_port=True
-            ):
+            async for _ in self.capture_continuous(stream, "jpeg", use_video_port=True):
                 try:
-                    await socket.send(
-                        self.image_stream.getvalue()
+                    await self.socket.send(
+                        stream.getvalue()
                     )  # send method is a coroutine
-                    self.image_stream.seek(0)
-                    self.image_stream.truncate()
-                    await asyncio.sleep(delay)
-                except (ConnectionClosed, ConnectionClosedOK):
+                    stream.seek(0)
+                    stream.truncate()
+                    # await asyncio.sleep(delay)
+                except (exceptions.ConnectionClosed, exceptions.ConnectionClosedOK):
                     return
         except (KeyError, AttributeError):
             return

@@ -8,17 +8,22 @@ import asyncio
 import websockets
 
 import websockets.server as server
+import websockets.exceptions as exceptions
 
+from enum import Enum
 from asyncio import Task
-from typing import Optional
-from typing import Callable
 from argparse import ArgumentParser
 from multiprocessing import Process
-from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
+from typing import Optional, Callable
 
-from stage import Stage
-from camera import Camera
-from instructions import CameraKey, StageKey
+from src.stage import Stage
+from src.camera import Camera
+
+
+class Instruction(Enum):
+    CFG = 0
+    CMD = 1
+    POS = 2
 
 
 # Setup optional command line arguments
@@ -30,7 +35,7 @@ parser.add_argument("-s", "--stage", help="Stage port")
 args = parser.parse_args()
 
 # Load default websocket configuration
-defaults = json.load(open("settings.json"))
+defaults = json.load(open("../settings.json"))
 
 ADDRESS = args.address if args.address else defaults["address"]
 CAMERA_PORT = args.cameraport if args.cameraport else defaults["ports"]["camera"]
@@ -49,21 +54,24 @@ async def process_task_cancellation(task: Task) -> None:
 async def handle_camera(socket: server.WebSocketServerProtocol, camera: Camera):
     task: Optional[Task] = None
     try:
-        camera = Camera()
+        camera = Camera(socket)
         async for message in socket:
             data = json.loads(message)  # Convert json serialized message to dict
             for key in data.keys():
-                match key:
-                    case CameraKey.CFG.value:
+                match key.upper():
+                    case Instruction.CFG:
                         camera.resolution = tuple(data[key]["resolution"])
                         await camera.startup()
-
-                        task = asyncio.create_task(camera.get_frames(socket))
+                        task = asyncio.create_task(camera.get_frames())
                     case _:
                         await socket.send(
                             json.dumps({"err": f"Unrecognized instruction: {key}"})
                         )
-    except (ConnectionClosedError, ConnectionClosedOK, KeyboardInterrupt):
+    except (
+        exceptions.ConnectionClosedError,
+        exceptions.ConnectionClosedOK,
+        KeyboardInterrupt,
+    ):
         if task is not None:
             await process_task_cancellation(task)
     finally:
@@ -74,25 +82,27 @@ async def handle_camera(socket: server.WebSocketServerProtocol, camera: Camera):
 async def handle_stage(socket: server.WebSocketServerProtocol, stage: Stage):
     task: Optional[Task] = None
     try:
-        stage = Stage()
+        stage = Stage(socket)
         async for message in socket:
-            instruction: dict = json.loads(
-                message
-            )  # Convert json serialized message to dict
+            instruction = json.loads(message)  # Convert json serialized message to dict
             for key in instruction.keys():
-                match key:
-                    case StageKey.POS.value:
+                match key.upper():
+                    case Instruction.POS:
                         task = asyncio.create_task(
-                            stage.get_position(socket, int(instruction[key]))
+                            stage.get_position(int(instruction[key]))
                         )
-                    case StageKey.CMD.value:
+                    case Instruction.CMD:
                         print(instruction[key])
                         await stage.send(instruction[key])
                     case _:
                         await socket.send(
                             json.dumps({"err": f"Unrecognized instruction: {key}"})
                         )
-    except (ConnectionClosedError, ConnectionClosedOK, KeyboardInterrupt):
+    except (
+        exceptions.ConnectionClosedError,
+        exceptions.ConnectionClosedOK,
+        KeyboardInterrupt,
+    ):
         if task is not None:
             await process_task_cancellation(task)
     finally:
