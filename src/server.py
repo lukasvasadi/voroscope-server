@@ -44,10 +44,10 @@ CAMERA_PORT = args.camera if args.camera else defaults["ports"]["camera"]
 STAGE_PORT = args.stage if args.stage else defaults["ports"]["stage"]
 
 
-async def process_task_cancellation(task: Task) -> None:
+async def process_task_cancellation(dev: str, task: Task) -> None:
     print(
         colored(
-            f"Camera coroutine cancellation request: {task.cancel()}",
+            f"{dev} coroutine cancellation request: {task.cancel()}",
             "magenta",
             attrs=["bold"],
         )
@@ -55,7 +55,7 @@ async def process_task_cancellation(task: Task) -> None:
     await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
     print(
         colored(
-            f"Camera coroutine cancellation status: {task.cancelled()}",
+            f"{dev}  coroutine cancellation status: {task.cancelled()}",
             "magenta",
             attrs=["bold"],
         )
@@ -64,7 +64,7 @@ async def process_task_cancellation(task: Task) -> None:
     if task.exception():
         print(
             colored(
-                f"Warning: Camera coroutine exception: {task.exception()}",
+                f"{dev}  coroutine exception: {task.exception()}",
                 "red",
                 attrs=["bold"],
             )
@@ -96,7 +96,7 @@ async def handle_camera(socket: server.WebSocketServerProtocol, camera: Camera):
         KeyboardInterrupt,
     ):
         if task is not None:
-            await process_task_cancellation(task)
+            await process_task_cancellation("Camera", task)
     finally:
         print(colored("Closing camera...", "yellow", attrs=["bold"]))
         camera.close()
@@ -110,13 +110,13 @@ async def handle_stage(socket: server.WebSocketServerProtocol, stage: Stage):
         stage = Stage(socket)
         print(colored("Stage connected", "green", attrs=["bold"]))
         async for message in socket:
+            await socket.send(message)  # Echo data
             data = json.loads(message)  # Convert json serialized message to dict
             for key in data.keys():
                 match key.upper():
                     case Instruction.POS.name:
                         task = asyncio.create_task(stage.get_position(int(data[key])))
                     case Instruction.CMD.name:
-                        print(data[key])
                         await stage.send(data[key])
                     case _:
                         await socket.send(
@@ -128,9 +128,9 @@ async def handle_stage(socket: server.WebSocketServerProtocol, stage: Stage):
         KeyboardInterrupt,
     ):
         if task is not None:
-            await process_task_cancellation(task)
+            await process_task_cancellation("Stage", task)
     finally:
-        print(colored("Closing camera...", "yellow", attrs=["bold"]))
+        print(colored("Closing stage...", "yellow", attrs=["bold"]))
         stage.close()
 
 
