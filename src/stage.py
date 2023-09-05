@@ -87,7 +87,9 @@ class Stage(Serial):
 
                 if any([axis in response for axis in ("X", "Y", "Z")]):
                     await self.socket.send(json.dumps({"pos": response}))
-                    # await asyncio.sleep(interval)
+
+                    # NOTE: A delay is needed to prevent serial port blocking
+                    await asyncio.sleep(interval)
                 elif response in ("ok", "echo:busy: processing"):
                     continue
                 else:
