@@ -29,7 +29,7 @@ pip install -r requirements.txt
 3. Run the server script:
 
 ```bash
-python pyserver.py
+python server.py
 ```
 
 ## Helpful Links
