@@ -1,7 +1,10 @@
 {
     "editor.formatOnSave": true,
-    "python.formatting.provider": "black",
+    "python.formatting.provider": "none",
     "terminal.integrated.env.linux": {
         "PYTHONPATH": "${workspaceFolder}",
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
     },
 }
