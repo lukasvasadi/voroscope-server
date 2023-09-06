@@ -45,26 +45,13 @@ STAGE_PORT = args.stage if args.stage else defaults["ports"]["stage"]
 
 
 async def process_task_cancellation(dev: str, task: Task) -> None:
-    print(
-        colored(
-            f"{dev} coroutine cancellation request: {task.cancel()}",
-            "magenta",
-            attrs=["bold"],
-        )
-    )
+    task.cancel()
     await asyncio.sleep(0.1)  # Allow asyncio to process cancellation
-    print(
-        colored(
-            f"{dev}  coroutine cancellation status: {task.cancelled()}",
-            "magenta",
-            attrs=["bold"],
-        )
-    )
 
     if task.exception():
         print(
             colored(
-                f"{dev}  coroutine exception: {task.exception()}",
+                f"{dev} coroutine exception: {task.exception()}",
                 "red",
                 attrs=["bold"],
             )
