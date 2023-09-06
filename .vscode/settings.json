@@ -1,6 +1,5 @@
 {
     "editor.formatOnSave": true,
-    "python.formatting.provider": "none",
     "terminal.integrated.env.linux": {
         "PYTHONPATH": "${workspaceFolder}",
     },
